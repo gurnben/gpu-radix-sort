@@ -26,10 +26,10 @@ void test_cpu_vs_gpu(unsigned int* h_in, unsigned int num_elems)
     unsigned int* h_out_cpu = new unsigned int[num_elems];
     unsigned int* h_out_gpu = new unsigned int[num_elems];
 
-    start = std::clock();
-    cpu_sort(h_out_cpu, h_in, num_elems);
-    double cpu_duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
-    std::cout << "CPU time: " << cpu_duration << " s" << std::endl;
+    //start = std::clock();
+    //cpu_sort(h_out_cpu, h_in, num_elems);
+    //double cpu_duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
+    //std::cout << "CPU time: " << cpu_duration << " s" << std::endl;
     
     unsigned int* d_in;
     unsigned int* d_out;
@@ -45,9 +45,10 @@ void test_cpu_vs_gpu(unsigned int* h_in, unsigned int num_elems)
     checkCudaErrors(cudaFree(d_in));
 
     // Calculate GPU / CPU speedup
-    std::cout << "Speedup: " << cpu_duration / gpu_duration << "x" << std::endl;
+    //std::cout << "Speedup: " << cpu_duration / gpu_duration << "x" << std::endl;
 
     // Check for any mismatches between outputs of CPU and GPU
+    /*
     bool match = true;
     int index_diff = 0;
     for (int i = 0; i < num_elems; ++i)
@@ -83,6 +84,7 @@ void test_cpu_vs_gpu(unsigned int* h_in, unsigned int num_elems)
         }
         std::cout << std::endl;
     }
+    */
     
     delete[] h_out_gpu;
     delete[] h_out_cpu;
@@ -93,7 +95,7 @@ int main()
     // Set up clock for timing comparisons
     srand(1);
 
-    for (int i = 27; i < 28; ++i)
+    for (int i = 1; i < 28; ++i)
     {
         unsigned int num_elems = (1 << i);
         //unsigned int num_elems = 8;
@@ -111,10 +113,10 @@ int main()
         //std::cout << std::endl;
 
         std::cout << "*** i: " << i << " ***" << std::endl;
-        for (int j = 0; j < 5; ++j) {
-            std::cout << "*****Descending order*****" << std::endl;
-            test_cpu_vs_gpu(h_in, num_elems);
-            std::cout << "*****Random order*****" << std::endl;
+        for (int j = 0; j < 2; ++j) {
+            //std::cout << "*****Descending order*****" << std::endl;
+            //test_cpu_vs_gpu(h_in, num_elems);
+            //std::cout << "*****Random order*****" << std::endl;
             test_cpu_vs_gpu(h_in_rand, num_elems);
             std::cout << std::endl;
         }
