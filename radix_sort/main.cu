@@ -9,28 +9,13 @@
 #include "sort.h"
 #include "utils.h"
 
-void cpu_sort(unsigned int* h_out, unsigned int* h_in, size_t len)
-{
-    for (int i = 0; i < len; ++i)
-    {
-        h_out[i] = h_in[i];
-    }
-
-    std::sort(h_out, h_out + len);
-}
-
-void test_cpu_vs_gpu(unsigned int* h_in, unsigned int num_elems)
+double test_cpu_vs_gpu(unsigned int* h_in, unsigned int num_elems)
 {
     std::clock_t start;
 
     unsigned int* h_out_cpu = new unsigned int[num_elems];
     unsigned int* h_out_gpu = new unsigned int[num_elems];
 
-    //start = std::clock();
-    //cpu_sort(h_out_cpu, h_in, num_elems);
-    //double cpu_duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
-    //std::cout << "CPU time: " << cpu_duration << " s" << std::endl;
-    
     unsigned int* d_in;
     unsigned int* d_out;
     checkCudaErrors(cudaMalloc(&d_in, sizeof(unsigned int) * num_elems));
@@ -39,91 +24,87 @@ void test_cpu_vs_gpu(unsigned int* h_in, unsigned int num_elems)
     start = std::clock();
     radix_sort(d_out, d_in, num_elems);
     double gpu_duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
-    std::cout << "GPU time: " << gpu_duration << " s" << std::endl;
     checkCudaErrors(cudaMemcpy(h_out_gpu, d_out, sizeof(unsigned int) * num_elems, cudaMemcpyDeviceToHost));
     checkCudaErrors(cudaFree(d_out));
     checkCudaErrors(cudaFree(d_in));
 
-    // Calculate GPU / CPU speedup
-    //std::cout << "Speedup: " << cpu_duration / gpu_duration << "x" << std::endl;
-
-    // Check for any mismatches between outputs of CPU and GPU
-    /*
-    bool match = true;
-    int index_diff = 0;
-    for (int i = 0; i < num_elems; ++i)
-    {
-        if (h_out_cpu[i] != h_out_gpu[i])
-        {
-            match = false;
-            index_diff = i;
-            break;
-        }
-    }
-    std::cout << "Match: " << match << std::endl;
-    
-    // Detail the mismatch if any
-    if (!match)
-    {
-        std::cout << "Difference in index: " << index_diff << std::endl;
-        std::cout << "CPU: " << h_out_cpu[index_diff] << std::endl;
-        std::cout << "GPU Radix Sort: " << h_out_gpu[index_diff] << std::endl;
-        int window_sz = 10;
-    
-        std::cout << "Contents: " << std::endl;
-        std::cout << "CPU: ";
-        for (int i = -(window_sz / 2); i < (window_sz / 2); ++i)
-        {
-            std::cout << h_out_cpu[index_diff + i] << ", ";
-        }
-        std::cout << std::endl;
-        std::cout << "GPU Radix Sort: ";
-        for (int i = -(window_sz / 2); i < (window_sz / 2); ++i)
-        {
-            std::cout << h_out_gpu[index_diff + i] << ", ";
-        }
-        std::cout << std::endl;
-    }
-    */
-    
     delete[] h_out_gpu;
     delete[] h_out_cpu;
+
+    return gpu_duration;
 }
 
-int main()
+/*printUsage
+*
+* Prints the usage information for this application.
+*/
+void printUsage()
+{
+    printf("This application takes as input a lower and upper bound for\n");
+    printf("data sizes.  The input lower and upper bounds are taken in as\n");
+    printf("powers of 2.  For example, input 24 as a lower bound will sort\n");
+    printf("2^24 elements.\n");
+    printf("\nusage: radix_sort <lower bound> <upper bound>\n");
+    printf("\t<lower_bound> will be treated as a power of 2 and is inclusive\n");
+    printf("\t<upper_bound> will be treated as a power of 2 and is inclusive\n");
+    printf("Examples:\n");
+    printf("\t./hybrid_sort 24 26\n");
+}
+
+/*parseCommandArgs
+*
+* This function processes the command line arguments given to the program.
+*
+* the proper use is:
+*   ./hybrid_sort <lower_bound> <upper_bound>
+*
+* @params:
+*   argc        - the number of arguments in argv
+*   argv        - the arguments to the utility
+*   lower_bound - a pointer to a lower_bound variable
+*   upper_bound - a pointer to an upper_bound variable
+*/
+void parseCommandArgs(int argc, char * argv[], int * lower_bound,
+                      int * upper_bound) {
+    if (argc < 3) {
+      printUsage();
+      //exit because the input was incorrect
+      exit(EXIT_FAILURE);
+    }
+    else {
+      (*lower_bound) = atoi(argv[argc - 2]);
+      (*upper_bound) = atoi(argv[argc - 1]);
+    }
+}
+
+int main(int argc, char * argv[])
 {
     // Set up clock for timing comparisons
     srand(1);
 
-    for (int i = 1; i < 28; ++i)
+    int lower_bound = 0, upper_bound = 0;
+
+    parseCommandArgs(argc, argv, &lower_bound, &upper_bound);
+
+    for (int i = lower_bound; i <= upper_bound; ++i)
     {
         unsigned int num_elems = (1 << i);
-        //unsigned int num_elems = 8;
-        std::cout << "h_in size: " << num_elems << std::endl;
-
         unsigned int* h_in = new unsigned int[num_elems];
         unsigned int* h_in_rand = new unsigned int[num_elems];
 
-        for (int j = 0; j < num_elems; j++)
+        for (unsigned int j = 0; j < num_elems; j++)
         {
             h_in[j] = (num_elems - 1) - j;
             h_in_rand[j] = rand() % num_elems;
-            //std::cout << h_in[j] << " ";
         }
-        //std::cout << std::endl;
+        double time = 0;
+        for (unsigned int j = 0; j < 2; ++j) {
+            time = test_cpu_vs_gpu(h_in_rand, num_elems);
+        }
 
-        std::cout << "*** i: " << i << " ***" << std::endl;
-        for (int j = 0; j < 2; ++j) {
-            //std::cout << "*****Descending order*****" << std::endl;
-            //test_cpu_vs_gpu(h_in, num_elems);
-            //std::cout << "*****Random order*****" << std::endl;
-            test_cpu_vs_gpu(h_in_rand, num_elems);
-            std::cout << std::endl;
-        }
+        printf("Four-way Radix Sort took %f milliseconds to sort %e (2^%d) numbers.\n", time, pow(2, i), i);
 
         delete[] h_in;
         delete[] h_in_rand;
-
-        std::cout << std::endl;
     }
 }
